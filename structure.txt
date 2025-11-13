@@ -1,13 +1,10 @@
 twitter_sentiment_project/
 │
-├── data/
-│   ├── twitter_dataset_kaggle.csv
-│   ├── twitter_with_sentiment.csv
-│
 ├── backend/
 │   ├── phase1_analyze.py
 │   ├── phase2_build_model.py
 │   ├── model_utils.py
+|   ├── twitter_dataset_kaggle.csv
 │
 ├── frontend/
 │   └── dashboard_app.py
@@ -18,3 +15,4 @@ twitter_sentiment_project/
 │
 ├── requirements.txt
 └── README.md
+
