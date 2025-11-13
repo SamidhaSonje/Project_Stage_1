@@ -1,0 +1,20 @@
+twitter_sentiment_project/
+│
+├── data/
+│   ├── twitter_dataset_kaggle.csv
+│   ├── twitter_with_sentiment.csv
+│
+├── backend/
+│   ├── phase1_analyze.py
+│   ├── phase2_build_model.py
+│   ├── model_utils.py
+│
+├── frontend/
+│   └── dashboard_app.py
+│
+├── outputs/
+│   ├── confusion_matrix.png
+│   ├── sentiment_distribution_pie_chart.png
+│
+├── requirements.txt
+└── README.md
