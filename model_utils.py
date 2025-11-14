@@ -14,6 +14,7 @@ import os
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 
 nltk.download('vader_lexicon')
+# Ensure required resources are downloaded
 nltk.download('twitter_samples', quiet=True)
 nltk.download('stopwords', quiet=True)
 
@@ -36,7 +37,7 @@ def load_training_data():
     import pandas as pd
     df = pd.read_csv("C:/Users/mp/Desktop/BE/BE Project/web_scrapping/backend/twitter_dataset_kaggle.csv")
     print(df.columns)
-
+    
     # Initialize sentiment analyzer
     sia = SentimentIntensityAnalyzer()
 
@@ -44,7 +45,7 @@ def load_training_data():
     if 'Tweet' in df.columns:
         df["compound"] = df["Tweet"].apply(lambda x: sia.polarity_scores(str(x))["compound"])
     elif 'Text' in df.columns:
-        df["compound"] = df["Text"].apply(lambda x: sia.polarity_scores(str(x))["compound"])
+         df["compound"] = df["Text"].apply(lambda x: sia.polarity_scores(str(x))["compound"])
     def label_sentiment(score):
         if score >= 0.05:
             return 'Positive'
@@ -66,21 +67,39 @@ def train_sentiment_model():
     neu_tweets = twitter_samples.strings('neutral_tweets.json')
 
     df = pd.DataFrame({
-        'Tweet': pos_tweets + neg_tweets + neu_tweets,
+        'Text': pos_tweets + neg_tweets +neu_tweets,
         'sentiment': [2]*len(neu_tweets) + [1]*len(pos_tweets) + [0]*len(neg_tweets)
     })
     return df
 
 # --- Train a Model Dynamically ---
 def train_sentiment_model(model_type="Logistic Regression"):
-    df = load_training_data()  
+    df = load_training_data()
+
+    from sklearn.utils import resample
+    # Separate classes
+    neg = df[df['sentiment'] == 'Negative']
+    neu = df[df['sentiment'] == 'Neutral']
+    pos = df[df['sentiment'] == 'Positive']
+    # Find max class size
+    max_size = max(len(neg), len(neu), len(pos))
+    # Upsample minority classes
+    neg_up = resample(neg, replace=True, n_samples=max_size, random_state=42)
+    neu_up = resample(neu, replace=True, n_samples=max_size, random_state=42)
+    pos_up = resample(pos, replace=True, n_samples=max_size, random_state=42)
+    # Combine
+    df = pd.concat([neg_up, neu_up, pos_up])
+    df = df.sample(frac=1, random_state=42).reset_index(drop=True)
+
     vectorizer = TfidfVectorizer(stop_words='english', max_features=5000)
     if 'Tweet' in df.columns:
         X = vectorizer.fit_transform(df['Tweet'])
     elif 'Text' in df.columns:
-        X = vectorizer.fit_transform(df['Text'])
-    y = df['sentiment']
-
+         X = vectorizer.fit_transform(df['Text'])
+    label_map = {'Negative': 0, 'Neutral': 1, 'Positive': 2}
+    
+    y = df['sentiment'].map(label_map)
+    
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
     # Select model type
@@ -101,14 +120,14 @@ def train_sentiment_model(model_type="Logistic Regression"):
     # Evaluate
     y_pred = model.predict(X_test)
     accuracy = accuracy_score(y_test, y_pred)
-    report = classification_report(y_test, y_pred, target_names=['Negative', 'Positive', 'Neutral'])
+    report = classification_report(y_test, y_pred, target_names=['Negative', 'Neutral', 'Positive'])
 
     # Confusion Matrix Visualization
     cm = confusion_matrix(y_test, y_pred)
     plt.figure(figsize=(6, 5))
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
-                xticklabels=['Negative', 'Positive', 'Neutral'],
-                yticklabels=['Negative', 'Positive', 'Neutral'])
+                xticklabels=['Negative', 'Neutral', 'Positive'],
+                yticklabels=['Negative', 'Neutral', 'Positive'])
     plt.title(f'{model_type} - Confusion Matrix')
     plt.xlabel('Predicted')
     plt.ylabel('Actual')
@@ -118,11 +137,14 @@ def train_sentiment_model(model_type="Logistic Regression"):
 
     return model, vectorizer, accuracy, report, f"outputs/confusion_matrix_{model_type.replace(' ', '_')}.png"
 
+
 # --- Predict New Tweets ---
 def predict_sentiment(model, vectorizer, texts):
     X_new = vectorizer.transform(texts)
     preds = model.predict(X_new)
-    print(preds)
-    return preds
 
+    reverse_map = {0: "Negative", 1: "Neutral", 2: "Positive"}
+    return [reverse_map[p] for p in preds]
+    
+    
     
