@@ -19,8 +19,8 @@ if section == "Analyze Dataset":
     uploaded_file = st.file_uploader("Upload a CSV file with a 'Text' column", type=["csv"])
     if uploaded_file:
         df = pd.read_csv(uploaded_file)
-       
-        # --- Key Metrics ---
+
+         # --- Key Metrics ---
         total_tweets = len(df)
         st.write("Total Tweets : ",total_tweets)
         
@@ -44,10 +44,10 @@ if section == "Analyze Dataset":
         col2.metric("Positive", f"{positive_tweets} ({positive_tweets/total_tweets:.1%})")
         col3.metric("Neutral", f"{neutral_tweets} ({neutral_tweets/total_tweets:.1%})")
         col4.metric("Negative", f"{negative_tweets} ({negative_tweets/total_tweets:.1%})")
-
+        
         fig, ax = plt.subplots()
         ax.pie(sentiment_counts, labels=sentiment_counts.index, autopct='%1.1f%%',
-               colors=['#4CAF50', '#9E9E9E', '#F44336'], startangle=140, radius=0.7)
+               colors=['#4CAF50', '#9E9E9E', '#F44336'], startangle=140)
         ax.set_title("Sentiment Distribution in Dataset")
         st.pyplot(fig)
 
@@ -56,12 +56,17 @@ if section == "Analyze Dataset":
 # --- 2. Build & Evaluate Model ---
 elif section == "Build & Evaluate Model":
     st.header(" Train and Evaluate ML Model")
+
     model_choice = st.selectbox("Select a Machine Learning Model", 
                                 ["Logistic Regression", "Naive Bayes", "Random Forest", "SVM"])
-    
+
     if st.button("Train Selected Model"):
         with st.spinner(f"Training {model_choice} model..."):
             model, vectorizer, acc, report, cm_path = train_sentiment_model(model_choice)
+            
+            st.session_state['saved_model'] = model
+            st.session_state['saved_vectorizer'] = vectorizer
+
             st.success(f"{model_choice} trained successfully with accuracy: {acc*100:.2f}%")
 
             st.subheader(" Classification Report")
@@ -77,11 +82,16 @@ elif section == "Predict Sentiment":
 
     model_choice = st.selectbox("Select Model for Prediction", 
                                 ["Logistic Regression", "Naive Bayes", "Random Forest", "SVM"])
-    model, vectorizer, _, _, _ = train_sentiment_model(model_choice)
-    user_input = st.text_area("Enter tweets (one per line):")
+    if 'saved_model' not in st.session_state:
+        st.warning("Please train the model first in the 'Build & Evaluate Model' section.")
+    else:
+        model = st.session_state['saved_model']
+        vectorizer = st.session_state['saved_vectorizer']
 
-    if st.button("Predict Sentiments"):
-        texts = [t.strip() for t in user_input.split("\n") if t.strip()]
-        preds = predict_sentiment(model, vectorizer, texts)
-        results = pd.DataFrame({"Tweet": texts, "Predicted Sentiment": preds})
-        st.dataframe(results)
+        user_input = st.text_area("Enter tweets (one per line):")
+
+        if st.button("Predict Sentiments"):
+            texts = [t.strip() for t in user_input.split("\n") if t.strip()]
+            preds = predict_sentiment(model, vectorizer, texts)
+            results = pd.DataFrame({"Text": texts, "Predicted Sentiment": preds})
+            st.dataframe(results)
